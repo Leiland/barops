@@ -1,0 +1,10 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Los modelos de BarOps se añadirán cuando se defina el primer módulo.
