@@ -7,4 +7,237 @@ datasource db {
   provider = "sqlite"
 }
 
-// Los modelos de BarOps se añadirán cuando se defina el primer módulo.
+enum RolUsuario {
+  ADMIN
+  CAMARERO
+  COCINA
+}
+
+enum EstadoMesa {
+  LIBRE
+  OCUPADA
+  RESERVADA
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  CONFIRMADA
+  SENTADA
+  COMPLETADA
+  CANCELADA
+  NO_ASISTIO
+}
+
+enum EstadoPedido {
+  ABIERTO
+  ENVIADO
+  PREPARANDO
+  LISTO
+  SERVIDO
+  PAGADO
+  CANCELADO
+}
+
+enum Estacion {
+  COCINA
+  BARRA
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  OTRO
+}
+
+enum TipoMovimientoStock {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+model User {
+  id               String            @id @default(cuid())
+  nombre           String
+  email            String            @unique
+  rol              RolUsuario        @default(CAMARERO)
+  passwordHash     String?
+  emailVerifiedAt  DateTime?
+  deletedAt        DateTime?
+  reservasCreadas  Reserva[]         @relation("ReservaCreadaPor")
+  pedidosCreados   Pedido[]          @relation("PedidoCreadoPor")
+  pagosRegistrados Pago[]            @relation("PagoRegistradoPor")
+  movimientosStock MovimientoStock[] @relation("MovimientoRegistradoPor")
+  authSessions     AuthSession[]
+  passwordResetTokens PasswordResetToken[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Mesa {
+  id        String     @id @default(cuid())
+  numero    Int        @unique
+  capacidad Int
+  // El estado operativo se sincroniza al confirmar reservas o abrir pedidos.
+  estado    EstadoMesa @default(LIBRE)
+  deletedAt DateTime?
+  reservas  Reserva[]
+  pedidos   Pedido[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Reserva {
+  id              String        @id @default(cuid())
+  mesaId          String?
+  // La mesa se puede asignar despuÃ©s de crear la reserva.
+  mesa            Mesa?         @relation(fields: [mesaId], references: [id], onDelete: Restrict)
+  clienteNombre   String
+  clienteTelefono String?
+  fechaHora       DateTime
+  duracionMinutos Int           @default(90)
+  comensales      Int
+  estado          EstadoReserva @default(PENDIENTE)
+  nota            String?
+  creadaPorId     String
+  creadaPor       User          @relation("ReservaCreadaPor", fields: [creadaPorId], references: [id], onDelete: Restrict)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([fechaHora, estado])
+  @@index([mesaId, fechaHora])
+}
+
+model Pedido {
+  id          String        @id @default(cuid())
+  mesaId      String
+  mesa        Mesa          @relation(fields: [mesaId], references: [id], onDelete: Restrict)
+  creadoPorId String
+  creadoPor   User          @relation("PedidoCreadoPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  estado      EstadoPedido  @default(ABIERTO)
+  nota        String?
+  lineas      LineaPedido[]
+  pagos       Pago[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([mesaId, estado])
+}
+
+model LineaPedido {
+  id                     String       @id @default(cuid())
+  pedidoId               String
+  pedido                 Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Restrict)
+  productoId             String
+  producto               Producto     @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  cantidad               Int
+  // Precio congelado al aÃ±adir la lÃ­nea; no cambia si cambia el producto.
+  precioUnitarioCentavos BigInt
+  estado                 EstadoPedido @default(ABIERTO)
+  nota                   String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  @@index([pedidoId])
+  @@index([productoId])
+}
+
+model Categoria {
+  id          String     @id @default(cuid())
+  nombre      String     @unique
+  descripcion String?
+  productos   Producto[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Producto {
+  id             String        @id @default(cuid())
+  sku            String        @unique
+  nombre         String
+  descripcion    String?
+  // Todos los importes del MVP se guardan en centavos de ARS.
+  precioCentavos BigInt
+  estacion       Estacion
+  categoriaId    String
+  categoria      Categoria     @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  deletedAt      DateTime?
+  lineas         LineaPedido[]
+  inventario     Inventario?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([categoriaId, deletedAt])
+}
+
+model Pago {
+  id              String     @id @default(cuid())
+  pedidoId        String
+  pedido          Pedido     @relation(fields: [pedidoId], references: [id], onDelete: Restrict)
+  montoCentavos   BigInt
+  metodo          MetodoPago
+  referencia      String?
+  registradoPorId String
+  registradoPor   User       @relation("PagoRegistradoPor", fields: [registradoPorId], references: [id], onDelete: Restrict)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([pedidoId])
+}
+
+model Inventario {
+  id             String            @id @default(cuid())
+  productoId     String            @unique
+  producto       Producto          @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  cantidadActual Int               @default(0)
+  cantidadMinima Int               @default(0)
+  unidad         String            @default("unidad")
+  movimientos    MovimientoStock[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model MovimientoStock {
+  id              String              @id @default(cuid())
+  inventarioId    String
+  inventario      Inventario          @relation(fields: [inventarioId], references: [id], onDelete: Restrict)
+  tipo            TipoMovimientoStock
+  // Delta firmado: entradas positivas, salidas negativas y ajustes segÃºn diferencia.
+  delta           Int
+  motivo          String?
+  registradoPorId String
+  registradoPor   User                @relation("MovimientoRegistradoPor", fields: [registradoPorId], references: [id], onDelete: Restrict)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([inventarioId, createdAt])
+}
+
+model AuthSession {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model AuthRateLimit {
+  key         String    @id
+  attempts    Int       @default(0)
+  windowStart DateTime
+  blockedUntil DateTime?
+}

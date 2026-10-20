@@ -1,4 +1,4 @@
-﻿import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -14,7 +14,7 @@ export default function Home() {
         TPV, inventario y métricas.
       </p>
       <div>
-        <Button disabled>Próximamente</Button>
+        <Link className="inline-flex rounded-lg bg-orange-700 px-5 py-3 font-semibold text-white hover:bg-orange-800" href="/login">Ingresar</Link>
       </div>
     </main>
   );
