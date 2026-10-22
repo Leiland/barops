@@ -13,8 +13,9 @@ export default function Home() {
         El proyecto ya está listo para construir mesas, reservas, comandas,
         TPV, inventario y métricas.
       </p>
-      <div>
+      <div className="flex flex-wrap gap-3">
         <Link className="inline-flex rounded-lg bg-orange-700 px-5 py-3 font-semibold text-white hover:bg-orange-800" href="/login">Ingresar</Link>
+        <Link className="inline-flex rounded-lg border border-orange-700 px-5 py-3 font-semibold text-orange-800 hover:bg-orange-50" href="/register">Crear cuenta</Link>
       </div>
     </main>
   );
