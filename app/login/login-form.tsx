@@ -41,6 +41,7 @@ export function LoginForm() {
       </div>
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
       <button className="w-full rounded-xl bg-orange-700 px-4 py-3 font-semibold text-white hover:bg-orange-800 disabled:cursor-wait disabled:opacity-60" type="submit" disabled={pending}>{pending ? "Ingresando…" : "Ingresar"}</button>
+      <Link className="block text-center text-sm text-orange-800 underline underline-offset-4" href="/register">Crear una cuenta</Link>
       <Link className="block text-center text-sm text-orange-800 underline underline-offset-4" href="/forgot-password">¿Olvidaste tu contraseña?</Link>
     </form>
   );
